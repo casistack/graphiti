@@ -1,15 +1,7 @@
-version: "3.8"
-
 services:
   neo4j:
     image: neo4j:${NEO4J_VERSION:-5.26.2}
     restart: ${RESTART_POLICY:-always}
-    healthcheck:
-      test: wget "http://localhost:${NEO4J_PORT:-7687}" || exit 1
-      interval: ${HEALTHCHECK_INTERVAL:-1s}
-      timeout: ${HEALTHCHECK_TIMEOUT:-10s}
-      retries: ${HEALTHCHECK_RETRIES:-20}
-      start_period: ${HEALTHCHECK_START_PERIOD:-3s}
     ports:
       - ":7474"
       - ":${NEO4J_PORT:-7687}"
@@ -17,6 +9,11 @@ services:
       - graphiti_neo4j_data:/data
     environment:
       - NEO4J_AUTH=${NEO4J_USER:-neo4j}/${NEO4J_PASSWORD:-zepzepzep}
+      - NEO4J_server_memory_pagecache_size=${NEO4J_MEMORY_PAGECACHE:-512M}
+      - NEO4J_server_memory_heap_initial__size=${NEO4J_MEMORY_HEAP_INITIAL:-512M}
+      - NEO4J_server_memory_heap_max__size=${NEO4J_MEMORY_HEAP_MAX:-1G}
+      - NEO4J_server_default__listen__address=0.0.0.0
+      - NEO4J_ACCEPT_LICENSE_AGREEMENT=${NEO4J_ACCEPT_LICENSE_AGREEMENT:-yes}
 
   graph:
     image: ${GRAPHITI_IMAGE:-graphiti-server}:${GRAPHITI_TAG:-latest}
@@ -35,9 +32,7 @@ services:
       interval: ${HEALTHCHECK_INTERVAL:-10s}
       timeout: ${HEALTHCHECK_TIMEOUT:-5s}
       retries: ${HEALTHCHECK_RETRIES:-3}
-    depends_on:
-      neo4j:
-        condition: service_healthy
+      start_period: ${GRAPH_HEALTHCHECK_START_PERIOD:-15s}
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - NEO4J_URI=bolt://neo4j:${NEO4J_PORT:-7687}

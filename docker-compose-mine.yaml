@@ -2,40 +2,51 @@ services:
   neo4j:
     image: neo4j:${NEO4J_VERSION:-5.26.2}
     restart: ${RESTART_POLICY:-always}
+    healthcheck:
+      test: wget "http://localhost:7474" || exit 1
+      interval: 1s
+      timeout: 10s
+      retries: 20
+      start_period: 3s
     ports:
       - ":7474"
-      - ":${NEO4J_PORT:-7687}"
+      - ":7687"
     volumes:
       - graphiti_neo4j_data:/data
     environment:
       - NEO4J_AUTH=${NEO4J_USER:-neo4j}/${NEO4J_PASSWORD:-zepzepzep}
       - NEO4J_ACCEPT_LICENSE_AGREEMENT=${NEO4J_ACCEPT_LICENSE_AGREEMENT:-yes}
-      - NEO4J_server_config_strict__validation_enabled=false
-      - NEO4J_dbms_anonymous_telemetry_enabled=false
 
   graph:
-    image: ${GRAPHITI_IMAGE:-graphiti-server}:${GRAPHITI_TAG:-latest}
-    restart: ${RESTART_POLICY:-always}
     build:
       context: .
       dockerfile: ${GRAPHITI_DOCKERFILE:-Dockerfile}
+    restart: ${RESTART_POLICY:-always}
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8000/healthcheck')",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
     depends_on:
-      - neo4j
-    command: >
-      sh -c "
-        echo 'Waiting for Neo4j to be ready...'
-        sleep ${NEO4J_WAIT_TIME:-30}
-        exec python -m graph_service.main"
+      neo4j:
+        condition: service_healthy
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - NEO4J_URI=bolt://neo4j:${NEO4J_PORT:-7687}
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL:-}
+      - NEO4J_URI=bolt://neo4j:7687
       - NEO4J_USER=${NEO4J_USER:-neo4j}
       - NEO4J_PASSWORD=${NEO4J_PASSWORD:-zepzepzep}
-      - PORT=${PORT:-8000}
+      - PORT=8000
       - MODEL_NAME=${MODEL_NAME:-gpt-4o-mini}
-      - USE_PARALLEL_RUNTIME=${USE_PARALLEL_RUNTIME:-false}
+      - EMBEDDING_MODEL_NAME=${EMBEDDING_MODEL_NAME:-text-embedding-3-small}
     ports:
-      - ":${PORT:-8000}"
+      - ":8000"
 
 volumes:
   graphiti_neo4j_data:

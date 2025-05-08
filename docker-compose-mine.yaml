@@ -9,10 +9,6 @@ services:
       - graphiti_neo4j_data:/data
     environment:
       - NEO4J_AUTH=${NEO4J_USER:-neo4j}/${NEO4J_PASSWORD:-zepzepzep}
-      - NEO4J_server_memory_pagecache_size=${NEO4J_MEMORY_PAGECACHE:-512M}
-      - NEO4J_server_memory_heap_initial__size=${NEO4J_MEMORY_HEAP_INITIAL:-512M}
-      - NEO4J_server_memory_heap_max__size=${NEO4J_MEMORY_HEAP_MAX:-1G}
-      - NEO4J_server_default__listen__address=0.0.0.0
       - NEO4J_ACCEPT_LICENSE_AGREEMENT=${NEO4J_ACCEPT_LICENSE_AGREEMENT:-yes}
 
   graph:
@@ -21,18 +17,13 @@ services:
     build:
       context: .
       dockerfile: ${GRAPHITI_DOCKERFILE:-Dockerfile}
-    healthcheck:
-      test:
-        [
-          "CMD",
-          "python",
-          "-c",
-          "import urllib.request; urllib.request.urlopen('http://localhost:${PORT:-8000}/healthcheck')",
-        ]
-      interval: ${HEALTHCHECK_INTERVAL:-10s}
-      timeout: ${HEALTHCHECK_TIMEOUT:-5s}
-      retries: ${HEALTHCHECK_RETRIES:-3}
-      start_period: ${GRAPH_HEALTHCHECK_START_PERIOD:-15s}
+    depends_on:
+      - neo4j
+    command: >
+      sh -c "
+        echo 'Waiting for Neo4j to be ready...'
+        sleep ${NEO4J_WAIT_TIME:-30}
+        exec python -m server.graph_service.main"
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - NEO4J_URI=bolt://neo4j:${NEO4J_PORT:-7687}

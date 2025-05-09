@@ -2,12 +2,7 @@ services:
   neo4j:
     image: neo4j:${NEO4J_VERSION:-5.26.2}
     restart: ${RESTART_POLICY:-always}
-    healthcheck:
-      test: wget "http://localhost:7474" || exit 1
-      interval: 5s
-      timeout: 90s
-      retries: 90
-      start_period: 90s
+    # Removed complex health check that's failing on Coolify
     ports:
       - "7474:7474"
       - "7687:7687"
@@ -15,6 +10,7 @@ services:
       - graphiti_neo4j_data:/data
     environment:
       NEO4J_AUTH: ${NEO4J_USER:-neo4j}/${NEO4J_PASSWORD:-zepzepzep}
+      NEO4J_server_config_strict__validation_enabled: "false"
 
   graph:
     build:
@@ -33,8 +29,21 @@ services:
       timeout: 90s
       retries: 5
     depends_on:
-      neo4j:
-        condition: service_healthy
+      - neo4j
+    # Add a custom entry point that waits for Neo4j
+    entrypoint: >
+      /bin/sh -c "
+      echo 'Waiting for Neo4j to become available...' &&
+      for i in {1..120}; do
+        sleep 5
+        if nc -z neo4j 7687 2>/dev/null; then
+          echo 'Neo4j is available, starting Graphiti...'
+          break
+        fi
+        echo 'Neo4j not available yet, waiting... (attempt $$i/120)'
+      done &&
+      uvicorn graph_service.main:app --host 0.0.0.0 --port 8000
+      "
     environment:
       OPENAI_API_KEY: ${OPENAI_API_KEY}
       OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}

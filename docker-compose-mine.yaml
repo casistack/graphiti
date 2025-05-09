@@ -3,15 +3,15 @@ services:
     image: neo4j:${NEO4J_VERSION:-5.26.2}
     restart: ${RESTART_POLICY:-always}
     ports:
-      - "7474:7474"
-      - "7687:7687"
+      - ":7474"
+      - ":7687"
     volumes:
       - graphiti_neo4j_data:/data
     environment:
-      - NEO4J_AUTH=${NEO4J_USER:-neo4j}/${NEO4J_PASSWORD:-zepzepzep}
-      - NEO4J_ACCEPT_LICENSE_AGREEMENT=${NEO4J_ACCEPT_LICENSE_AGREEMENT:-yes}
+      NEO4J_AUTH: "${NEO4J_USER:-neo4j}/${NEO4J_PASSWORD:-zepzepzep}"
+      NEO4J_ACCEPT_LICENSE_AGREEMENT: "${NEO4J_ACCEPT_LICENSE_AGREEMENT:-yes}"
       # Add any additional Neo4j specific environment variables here
-      - NEO4J_server_default__listen__address=0.0.0.0
+      NEO4J_server_default__listen__address: "0.0.0.0"
 
   graph:
     build:
@@ -21,16 +21,16 @@ services:
     depends_on:
       - neo4j
     environment:
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - OPENAI_BASE_URL=${OPENAI_BASE_URL:-https://api.openai.com/v1}
-      - NEO4J_URI=bolt://neo4j:7687
-      - NEO4J_USER=${NEO4J_USER:-neo4j}
-      - NEO4J_PASSWORD=${NEO4J_PASSWORD:-zepzepzep}
-      - PORT=8000
-      - MODEL_NAME=${MODEL_NAME:-gpt-4o-mini}
-      - EMBEDDING_MODEL_NAME=${EMBEDDING_MODEL_NAME:-text-embedding-3-small}
+      OPENAI_API_KEY: "${OPENAI_API_KEY}"
+      OPENAI_BASE_URL: "${OPENAI_BASE_URL:-https://api.openai.com/v1}"
+      NEO4J_URI: "bolt://neo4j:7687"
+      NEO4J_USER: "${NEO4J_USER:-neo4j}"
+      NEO4J_PASSWORD: "${NEO4J_PASSWORD:-zepzepzep}"
+      PORT: "8000"
+      MODEL_NAME: "${MODEL_NAME:-gpt-4o-mini}"
+      EMBEDDING_MODEL_NAME: "${EMBEDDING_MODEL_NAME:-text-embedding-3-small}"
     ports:
-      - "8484:8000"
+      - ":8000"
 
 volumes:
   graphiti_neo4j_data:

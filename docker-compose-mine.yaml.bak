@@ -2,6 +2,12 @@ services:
   neo4j:
     image: neo4j:${NEO4J_VERSION:-5.26.2}
     restart: ${RESTART_POLICY:-always}
+    healthcheck:
+      test: wget "http://localhost:7474" || exit 1
+      interval: 1s
+      timeout: 310s
+      retries: 20
+      start_period: 3s
     ports:
       - ":7474"
       - ":7687"
@@ -16,6 +22,20 @@ services:
       context: .
       dockerfile: ${GRAPHITI_DOCKERFILE:-Dockerfile}
     restart: ${RESTART_POLICY:-always}
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8000/healthcheck')",
+        ]
+      interval: 10s
+      timeout: 305s
+      retries: 3
+    depends_on:
+      neo4j:
+        condition: service_healthy
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - OPENAI_BASE_URL=${OPENAI_BASE_URL:-https://api.openai.com/v1}

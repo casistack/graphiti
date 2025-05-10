@@ -12,6 +12,42 @@ services:
       NEO4J_AUTH: ${NEO4J_USER:-neo4j}/${NEO4J_PASSWORD:-zepzepzep}
       NEO4J_server_config_strict__validation_enabled: "false"
 
+  graphiti_mcp:
+    build:
+      context: ./mcp_server
+      dockerfile: Dockerfile
+    restart: ${RESTART_POLICY:-always}
+    healthcheck:
+      test: ["CMD", "wget", "-O", "/dev/null", "http://localhost:8000"]
+      interval: 10s
+      timeout: 90s
+      retries: 5
+    depends_on:
+      - neo4j
+    entrypoint: >
+      /bin/sh -c "
+      echo 'Waiting for Neo4j to become available...' &&
+      for i in {1..60}; do
+        sleep 5
+        if nc -z neo4j 7687 2>/dev/null; then
+          echo 'Neo4j is available, starting Graphiti MCP...'
+          break
+        fi
+        echo 'Neo4j not available yet, waiting... (attempt $$i/60)'
+      done &&
+      uv run graphiti_mcp_server.py --transport sse --group-id ${MCP_GROUP_ID:-default_group}
+      "
+    environment:
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}
+      NEO4J_URI: bolt://neo4j:7687
+      NEO4J_USER: ${NEO4J_USER:-neo4j}
+      NEO4J_PASSWORD: ${NEO4J_PASSWORD:-zepzepzep}
+      MODEL_NAME: ${MODEL_NAME:-gpt-4o-mini}
+      EMBEDDING_MODEL_NAME: ${EMBEDDING_MODEL_NAME:-text-embedding-3-small}
+    ports:
+      - "8100:8000" # Exposing on a different port to avoid conflicts with your graph API
+
   graph:
     build:
       context: .

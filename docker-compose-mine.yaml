@@ -9,11 +9,11 @@ services:
       - graphiti_neo4j_data:/data
     environment:
       NEO4J_AUTH: ${NEO4J_USER:-neo4j}/${NEO4J_PASSWORD:-zepzepzep}
-      NEO4J_server_config_strict__validation_enabled: "false"
-      # Enable public access and set browser configurations
-      NEO4J_dbms_connector_bolt_advertised__address: ${NEO4J_DOMAIN:-localhost:7687}
-      NEO4J_dbms_connector_http_advertised__address: ${NEO4J_DOMAIN:-localhost:7474}
-      NEO4J_dbms_connector_https_enabled: "true"
+      NEO4J_server_config_strict__validation_enabled: false
+      # Enable public access and set browser configurations using newer settings
+      NEO4J_server_bolt_advertised__address: ${NEO4J_DOMAIN:-localhost:7687}
+      NEO4J_server_http_advertised__address: ${NEO4J_DOMAIN:-localhost:7474}
+      NEO4J_server_https_enabled: true
       NEO4J_browser_remote__content__hostname__whitelist: ${NEO4J_DOMAIN:-localhost},${HOSTNAME_WHITELIST:-}
 
   neo4j-proxy:

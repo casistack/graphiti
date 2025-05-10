@@ -279,6 +279,11 @@ async def resolve_extracted_edges(
 
     logger.debug(f'Resolved edges: {[(e.name, e.uuid) for e in resolved_edges]}')
 
+    await semaphore_gather(
+        create_entity_edge_embeddings(embedder, resolved_edges),
+        create_entity_edge_embeddings(embedder, invalidated_edges),
+    )
+
     return resolved_edges, invalidated_edges
 
 
@@ -394,7 +399,7 @@ async def dedupe_extracted_edge(
     )
 
     if duplicate_fact_id >= 0 and episode is not None:
-        edge.episodes += episode.uuid
+        edge.episodes.append(episode.uuid)
 
     end = time()
     logger.debug(

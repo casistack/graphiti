@@ -3,8 +3,8 @@ services:
     image: neo4j:${NEO4J_VERSION:-5.26.2}
     restart: ${RESTART_POLICY:-always}
     ports:
-      - "7474:7474"
-      - "7687:7687"
+      - ":7474"
+      - ":7687"
     volumes:
       - graphiti_neo4j_data:/data
     environment:
@@ -21,7 +21,7 @@ services:
     depends_on:
       - neo4j
     ports:
-      - "7480:80"
+      - ":80"
     healthcheck:
       test: ["CMD", "wget", "-O", "/dev/null", "http://localhost:80"]
       interval: 10s
@@ -84,7 +84,7 @@ services:
       MODEL_NAME: ${MODEL_NAME:-gpt-4o-mini}
       EMBEDDING_MODEL_NAME: ${EMBEDDING_MODEL_NAME:-text-embedding-3-small}
     ports:
-      - "8100:8000" # Exposing on a different port to avoid conflicts with your graph API
+      - ":8000" # Exposing on a different port to avoid conflicts with your graph API
 
   graph:
     build:
@@ -128,7 +128,7 @@ services:
       MODEL_NAME: ${MODEL_NAME:-gpt-4o-mini}
       EMBEDDING_MODEL_NAME: ${EMBEDDING_MODEL_NAME:-text-embedding-3-small}
     ports:
-      - "8484:8000"
+      - ":8000"
 
 volumes:
   graphiti_neo4j_data:

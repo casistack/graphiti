@@ -1,0 +1,100 @@
+version: "3.8"
+
+services:
+  neo4j:
+    image: neo4j:${NEO4J_VERSION:-5.26.2}
+    restart: ${RESTART_POLICY:-always}
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    volumes:
+      - graphiti_neo4j_data:/data
+    environment:
+      NEO4J_AUTH: ${NEO4J_USER:-neo4j}/${NEO4J_PASSWORD:-zepzepzep}
+      NEO4J_server_config_strict__validation_enabled: "false"
+      NEO4J_server_memory_heap_initial__size: ${NEO4J_HEAP_INITIAL:-512m}
+      NEO4J_server_memory_heap_max__size: ${NEO4J_HEAP_MAX:-1G}
+      NEO4J_server_memory_pagecache_size: ${NEO4J_PAGECACHE:-512m}
+
+  graphiti_mcp:
+    build:
+      context: ./mcp_server
+      dockerfile: Dockerfile
+    restart: ${RESTART_POLICY:-always}
+    healthcheck:
+      test: ["CMD", "wget", "-O", "/dev/null", "http://localhost:8000"]
+      interval: 10s
+      timeout: 90s
+      retries: 5
+    depends_on:
+      - neo4j
+    entrypoint: >
+      /bin/sh -c "
+      echo 'Waiting for Neo4j to become available...' &&
+      for i in {1..60}; do
+        sleep 5
+        if nc -z neo4j 7687 2>/dev/null; then
+          echo 'Neo4j is available, starting Graphiti MCP...'
+          break
+        fi
+        echo 'Neo4j not available yet, waiting... (attempt $$i/60)'
+      done &&
+      uv run graphiti_mcp_server.py --transport sse --group-id ${MCP_GROUP_ID:-default_group}
+      "
+    environment:
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}
+      NEO4J_URI: bolt://neo4j:7687
+      NEO4J_USER: ${NEO4J_USER:-neo4j}
+      NEO4J_PASSWORD: ${NEO4J_PASSWORD:-zepzepzep}
+      MODEL_NAME: ${MODEL_NAME:-gpt-4o-mini}
+      EMBEDDING_MODEL_NAME: ${EMBEDDING_MODEL_NAME:-text-embedding-3-small}
+    ports:
+      - "8100:8000" # Exposing on a different port to avoid conflicts with your graph API
+
+  # Keep your existing graph API service
+  graph:
+    build:
+      context: .
+      dockerfile: ${GRAPHITI_DOCKERFILE:-Dockerfile}
+    restart: ${RESTART_POLICY:-always}
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8000/healthcheck')",
+        ]
+      interval: 10s
+      timeout: 90s
+      retries: 5
+    depends_on:
+      - neo4j
+    entrypoint: >
+      /bin/sh -c "
+      echo 'Waiting for Neo4j to become available...' &&
+      for i in {1..120}; do
+        sleep 5
+        if nc -z neo4j 7687 2>/dev/null; then
+          echo 'Neo4j is available, starting Graphiti...'
+          break
+        fi
+        echo 'Neo4j not available yet, waiting... (attempt $$i/120)'
+      done &&
+      uvicorn graph_service.main:app --host 0.0.0.0 --port 8000
+      "
+    environment:
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}
+      NEO4J_URI: bolt://neo4j:7687
+      NEO4J_USER: ${NEO4J_USER:-neo4j}
+      NEO4J_PASSWORD: ${NEO4J_PASSWORD:-zepzepzep}
+      PORT: 8000
+      MODEL_NAME: ${MODEL_NAME:-gpt-4o-mini}
+      EMBEDDING_MODEL_NAME: ${EMBEDDING_MODEL_NAME:-text-embedding-3-small}
+    ports:
+      - "8484:8000"
+
+volumes:
+  graphiti_neo4j_data:

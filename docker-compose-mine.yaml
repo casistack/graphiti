@@ -10,40 +10,6 @@ services:
     environment:
       NEO4J_AUTH: "${NEO4J_USER:-neo4j}/${NEO4J_PASSWORD:-zepzepzep}"
 
-  neo4j-proxy:
-    image: nginx:alpine
-    restart: ${RESTART_POLICY:-always}
-    depends_on:
-      - neo4j
-    ports:
-      - "8117:80"
-    healthcheck:
-      test: ["CMD", "wget", "-O", "/dev/null", "http://localhost:80"]
-      interval: 10s
-      timeout: 30s
-      retries: 5
-    # Create config as environment variable instead of volume mount
-    command: >
-      /bin/sh -c "
-      echo 'server {
-        listen 80;
-        server_name localhost;
-        
-        location / {
-            proxy_pass http://neo4j:7474;
-            proxy_http_version 1.1;
-            proxy_set_header Upgrade \$$http_upgrade;
-            proxy_set_header Connection \"upgrade\";
-            proxy_set_header Host \$$host;
-            proxy_cache_bypass \$$http_upgrade;
-            proxy_set_header X-Real-IP \$$remote_addr;
-            proxy_set_header X-Forwarded-For \$$proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto \$$scheme;
-        }
-      }' > /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'
-      "
-    environment:
-      - VIRTUAL_HOST=${NEO4J_DOMAIN:-localhost}
 
   graphiti_mcp:
     build:

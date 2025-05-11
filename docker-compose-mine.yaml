@@ -1,3 +1,5 @@
+
+version: "3.8"
 services:
   neo4j:
     image: neo4j:${NEO4J_VERSION:-5.26.2}
@@ -15,8 +17,9 @@ services:
       NEO4J_browser_allow__outgoing__connections: "true"
       NEO4J_server.http.listen_address: "0.0.0.0:7474"
       NEO4J_server.bolt.listen_address: "0.0.0.0:7687"
-      # Signal to Coolify that this container has a web service
-      COOLIFY_PUBLISHED_PORT: "7474"
+      COOLIFY_PUBLISHED_PORT: "8085"
+
+
 
   graphiti_mcp:
     build:

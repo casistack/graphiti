@@ -15,6 +15,13 @@ services:
       NEO4J_browser_allow__outgoing__connections: "true"
       NEO4J_server.http.listen_address: "0.0.0.0:7474"
       NEO4J_server.bolt.listen_address: "0.0.0.0:7687"
+      VIRTUAL_HOST: "${NEO4J_HOST:-localhost}"
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "7474"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 90s
 
   graphiti_mcp:
     build:

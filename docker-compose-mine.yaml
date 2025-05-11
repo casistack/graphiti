@@ -3,7 +3,7 @@ services:
     image: neo4j:${NEO4J_VERSION:-5.26.2}
     restart: ${RESTART_POLICY:-always}
     ports:
-      - "7474:7474"
+      - "8085:7474"
       - "7687:7687"
     volumes:
       - graphiti_neo4j_data:/data
@@ -15,9 +15,6 @@ services:
       NEO4J_browser_allow__outgoing__connections: "true"
       NEO4J_server.http.listen_address: "0.0.0.0:7474"
       NEO4J_server.bolt.listen_address: "0.0.0.0:7687"
-
-      VIRTUAL_HOST: "${NEO4J_HOST:-localhost}"
-      VIRTUAL_PORT: 7474
 
   graphiti_mcp:
     build:

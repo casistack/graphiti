@@ -7,6 +7,10 @@ services:
       - "7687:7687"
     volumes:
       - graphiti_neo4j_data:/data
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.neo4j.rule=Host(`${NEO4J_HOST:-localhost}`)"
+      - "traefik.http.services.neo4j.loadbalancer.server.port=7474"
     environment:
       NEO4J_AUTH: "${NEO4J_USER:-neo4j}/${NEO4J_PASSWORD:-zepzepzep}"
       NEO4J_server_config_strict__validation_enabled: "false"

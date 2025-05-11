@@ -1,20 +1,5 @@
+version: '3.8'
 services:
-  neo4jweb:
-    image: neo4j:${NEO4J_VERSION:-5.26.2}
-    restart: ${RESTART_POLICY:-always}
-    ports:
-      - "8085:7474"
-      - "7687:7687"
-    volumes:
-      - graphiti_neo4j_data:/data
-    environment:
-      NEO4J_AUTH: "${NEO4J_USER:-neo4j}/${NEO4J_PASSWORD:-zepzepzep}"
-      NEO4J_server_config_strict__validation_enabled: "false"
-      NEO4J_server_default__listen__address: "0.0.0.0"
-      NEO4J_server_default__advertised__address: "${NEO4J_DOMAIN:-localhost}"
-      NEO4J_browser_allow__outgoing__connections: "true"
-      NEO4J_server.http.listen_address: "0.0.0.0:7474"
-      NEO4J_server.bolt.listen_address: "0.0.0.0:7687"
 
   graphiti_mcp:
     build:
@@ -96,5 +81,22 @@ services:
     ports:
       - "8119:8000"
 
+  neo4j:
+    image: neo4j:${NEO4J_VERSION:-5.26.2}
+    restart: ${RESTART_POLICY:-always}
+    ports:
+      - "8085:7474"
+      - "7687:7687"
+    volumes:
+      - graphiti_neo4j_data:/data
+    environment:
+      NEO4J_AUTH: "${NEO4J_USER:-neo4j}/${NEO4J_PASSWORD:-zepzepzep}"
+      NEO4J_server_config_strict__validation_enabled: "false"
+      NEO4J_server_default__listen__address: "0.0.0.0"
+      NEO4J_server_default__advertised__address: "${NEO4J_DOMAIN:-localhost}"
+      NEO4J_browser_allow__outgoing__connections: "true"
+      NEO4J_server.http.listen_address: "0.0.0.0:7474"
+      NEO4J_server.bolt.listen_address: "0.0.0.0:7687"
+      
 volumes:
   graphiti_neo4j_data:

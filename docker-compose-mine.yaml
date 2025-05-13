@@ -9,11 +9,12 @@ services:
       - ":7687"
     volumes:
       - graphiti_neo4j_data:/data
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:7474"]
-      interval: 10s
-      timeout: 90s
-      retries: 5          
+  healthcheck:
+    test: ["CMD", "wget", "--spider", "--quiet", "http://localhost:7474"]
+    interval: 10s
+    timeout: 5s
+    retries: 3
+    start_period: 30s      
     environment:
       NEO4J_AUTH: "${NEO4J_USER:-neo4j}/${NEO4J_PASSWORD:-zepzepzep}"
       NEO4J_server_config_strict__validation_enabled: "false"

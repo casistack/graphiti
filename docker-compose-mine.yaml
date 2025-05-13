@@ -5,11 +5,12 @@ services:
     volumes:
       - graphiti_neo4j_data:/data
     healthcheck:
-      test: ["CMD", "wget", "--spider", "--quiet", "http://localhost:7474"]
+      test:
+        ["CMD-SHELL", "wget --spider --quiet http://localhost:7474 || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 60s      
+      start_period: 60s
     environment:
       NEO4J_AUTH: "${NEO4J_USER:-neo4j}/${NEO4J_PASSWORD:-zepzepzep}"
       NEO4J_server_config_strict__validation_enabled: "false"

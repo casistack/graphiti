@@ -58,7 +58,7 @@ services:
       MODEL_NAME: "${MODEL_NAME:-gpt-4o-mini}"
       EMBEDDING_MODEL_NAME: "${EMBEDDING_MODEL_NAME:-text-embedding-3-small}"
     ports:
-      - ":8000" # Exposing on a different port to avoid conflicts with your graph API
+      - "8282:8000" # Exposing on a different port to avoid conflicts with your graph API
 
   graph:
     build:

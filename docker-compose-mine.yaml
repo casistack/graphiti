@@ -1,5 +1,5 @@
 services:
-  neo4j_server:
+  neo4j:
     image: neo4j:${NEO4J_VERSION:-5.26.2}
     restart: ${RESTART_POLICY:-always}
     volumes:

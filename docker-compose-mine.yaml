@@ -36,11 +36,6 @@ services:
       context: ./mcp_server
       dockerfile: Dockerfile
     restart: ${RESTART_POLICY:-always}
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/messages"]
-      interval: 10s
-      timeout: 90s
-      retries: 5
     entrypoint: >
       /bin/sh -c "
       echo 'Waiting for Neo4j to become available...' &&

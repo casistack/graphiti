@@ -76,7 +76,7 @@ services:
       timeout: 90s
       retries: 5
     depends_on:
-      - neo4j
+      - neo4j_server
     # Add a custom entry point that waits for Neo4j
     entrypoint: >
       /bin/sh -c "

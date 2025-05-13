@@ -5,7 +5,7 @@ services:
     image: neo4j:${NEO4J_VERSION:-5.26.2}
     restart: ${RESTART_POLICY:-always}
     ports:
-      - ":7474"
+      - "7474:7474"
       - ":7687"
     volumes:
       - graphiti_neo4j_data:/data

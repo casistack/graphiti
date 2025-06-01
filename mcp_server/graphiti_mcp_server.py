@@ -550,6 +550,13 @@ mcp = FastMCP(
     instructions=GRAPHITI_MCP_INSTRUCTIONS,
 )
 
+# Configure MCP server settings for container deployment
+import os
+if hasattr(mcp, 'settings'):
+    # Set host to 0.0.0.0 to bind to all interfaces in container
+    mcp.settings.host = os.environ.get('MCP_HOST', '0.0.0.0')
+    mcp.settings.port = int(os.environ.get('MCP_PORT', '8000'))
+
 # Initialize Graphiti client
 graphiti_client: Graphiti | None = None
 

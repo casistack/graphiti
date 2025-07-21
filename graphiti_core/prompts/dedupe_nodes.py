@@ -26,11 +26,15 @@ class NodeDuplicate(BaseModel):
     id: int = Field(..., description='integer id of the entity')
     duplicate_idx: int = Field(
         ...,
-        description='idx of the duplicate node. If no duplicate nodes are found, default to -1.',
+        description='idx of the duplicate entity. If no duplicate entities are found, default to -1.',
     )
     name: str = Field(
         ...,
-        description='Name of the entity. Should be the most complete and descriptive name possible.',
+        description='Name of the entity. Should be the most complete and descriptive name of the entity. Do not include any JSON formatting in the Entity name such as {}.',
+    )
+    duplicates: list[int] = Field(
+        ...,
+        description='idx of all duplicate entities.',
     )
 
 
@@ -80,19 +84,19 @@ def node(context: dict[str, Any]) -> list[Message]:
         is a duplicate entity of one of the EXISTING ENTITIES.
         
         Entities should only be considered duplicates if they refer to the *same real-world object or concept*.
+        Semantic Equivalence: if a descriptive label in existing_entities clearly refers to a named entity in context, treat them as duplicates.
 
         Do NOT mark entities as duplicates if:
         - They are related but distinct.
         - They have similar names or purposes but refer to separate instances or concepts.
 
-        Task:
-        If the NEW ENTITY represents a duplicate entity of any entity in EXISTING ENTITIES, set duplicate_entity_id to the
-        id of the EXISTING ENTITY that is the duplicate. 
+         TASK:
+         1. Compare `new_entity` against each item in `existing_entities`.
+         2. If it refers to the same real‐world object or concept, collect its index.
+         3. Let `duplicate_idx` = the *first* collected index, or –1 if none.
+         4. Let `duplicates` = the list of *all* collected indices (empty list if none).
         
-        If the NEW ENTITY is not a duplicate of any of the EXISTING ENTITIES,
-        duplicate_entity_id should be set to -1.
-        
-        Also return the name that best describes the NEW ENTITY (whether it is the name of the NEW ENTITY, a node it
+        Also return the full name of the NEW ENTITY (whether it is the name of the NEW ENTITY, a node it
         is a duplicate of, or a combination of the two).
         """,
         ),
@@ -137,8 +141,12 @@ def nodes(context: dict[str, Any]) -> list[Message]:
         <ENTITIES>
         {json.dumps(context['extracted_nodes'], indent=2)}
         </ENTITIES>
+        
+        <EXISTING ENTITIES>
+        {json.dumps(context['existing_nodes'], indent=2)}
+        </EXISTING ENTITIES>
 
-        For each of the above ENTITIES, determine if the entity is a duplicate of any of its duplication candidates.
+        For each of the above ENTITIES, determine if the entity is a duplicate of any of the EXISTING ENTITIES.
 
         Entities should only be considered duplicates if they refer to the *same real-world object or concept*.
 
@@ -152,9 +160,9 @@ def nodes(context: dict[str, Any]) -> list[Message]:
         For each entity, return the id of the entity as id, the name of the entity as name, and the duplicate_idx
         as an integer.
         
-        - If an entity is a duplicate of one of its duplication_candidates, return the idx of the candidate it is a 
+        - If an entity is a duplicate of one of the EXISTING ENTITIES, return the idx of the candidate it is a 
         duplicate of.
-        - If an entity is not a duplicate of one of its duplication candidates, return the -1 as the duplication_idx
+        - If an entity is not a duplicate of one of the EXISTING ENTITIES, return the -1 as the duplication_idx
         """,
         ),
     ]

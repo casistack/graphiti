@@ -21,13 +21,13 @@ from time import time
 from typing import Any
 from uuid import uuid4
 
-from neo4j import AsyncDriver
 from pydantic import BaseModel, Field
 from typing_extensions import LiteralString
 
+from graphiti_core.driver.driver import GraphDriver
 from graphiti_core.embedder import EmbedderClient
 from graphiti_core.errors import EdgeNotFoundError, GroupsEdgesNotFoundError
-from graphiti_core.helpers import DEFAULT_DATABASE, parse_db_date
+from graphiti_core.helpers import parse_db_date
 from graphiti_core.models.edges.edge_db_queries import (
     COMMUNITY_EDGE_SAVE,
     ENTITY_EDGE_SAVE,
@@ -50,8 +50,7 @@ ENTITY_EDGE_RETURN: LiteralString = """
             e.expired_at AS expired_at,
             e.valid_at AS valid_at,
             e.invalid_at AS invalid_at,
-            properties(e) AS attributes
-            """
+            properties(e) AS attributes"""
 
 
 class Edge(BaseModel, ABC):
@@ -62,16 +61,15 @@ class Edge(BaseModel, ABC):
     created_at: datetime
 
     @abstractmethod
-    async def save(self, driver: AsyncDriver): ...
+    async def save(self, driver: GraphDriver): ...
 
-    async def delete(self, driver: AsyncDriver):
+    async def delete(self, driver: GraphDriver):
         result = await driver.execute_query(
             """
         MATCH (n)-[e:MENTIONS|RELATES_TO|HAS_MEMBER {uuid: $uuid}]->(m)
         DELETE e
         """,
             uuid=self.uuid,
-            database_=DEFAULT_DATABASE,
         )
 
         logger.debug(f'Deleted Edge: {self.uuid}')
@@ -87,11 +85,11 @@ class Edge(BaseModel, ABC):
         return False
 
     @classmethod
-    async def get_by_uuid(cls, driver: AsyncDriver, uuid: str): ...
+    async def get_by_uuid(cls, driver: GraphDriver, uuid: str): ...
 
 
 class EpisodicEdge(Edge):
-    async def save(self, driver: AsyncDriver):
+    async def save(self, driver: GraphDriver):
         result = await driver.execute_query(
             EPISODIC_EDGE_SAVE,
             episode_uuid=self.source_node_uuid,
@@ -99,15 +97,14 @@ class EpisodicEdge(Edge):
             uuid=self.uuid,
             group_id=self.group_id,
             created_at=self.created_at,
-            database_=DEFAULT_DATABASE,
         )
 
-        logger.debug(f'Saved edge to neo4j: {self.uuid}')
+        logger.debug(f'Saved edge to Graph: {self.uuid}')
 
         return result
 
     @classmethod
-    async def get_by_uuid(cls, driver: AsyncDriver, uuid: str):
+    async def get_by_uuid(cls, driver: GraphDriver, uuid: str):
         records, _, _ = await driver.execute_query(
             """
         MATCH (n:Episodic)-[e:MENTIONS {uuid: $uuid}]->(m:Entity)
@@ -119,7 +116,6 @@ class EpisodicEdge(Edge):
             e.created_at AS created_at
         """,
             uuid=uuid,
-            database_=DEFAULT_DATABASE,
             routing_='r',
         )
 
@@ -130,7 +126,7 @@ class EpisodicEdge(Edge):
         return edges[0]
 
     @classmethod
-    async def get_by_uuids(cls, driver: AsyncDriver, uuids: list[str]):
+    async def get_by_uuids(cls, driver: GraphDriver, uuids: list[str]):
         records, _, _ = await driver.execute_query(
             """
         MATCH (n:Episodic)-[e:MENTIONS]->(m:Entity)
@@ -143,7 +139,6 @@ class EpisodicEdge(Edge):
             e.created_at AS created_at
         """,
             uuids=uuids,
-            database_=DEFAULT_DATABASE,
             routing_='r',
         )
 
@@ -156,7 +151,7 @@ class EpisodicEdge(Edge):
     @classmethod
     async def get_by_group_ids(
         cls,
-        driver: AsyncDriver,
+        driver: GraphDriver,
         group_ids: list[str],
         limit: int | None = None,
         uuid_cursor: str | None = None,
@@ -183,7 +178,6 @@ class EpisodicEdge(Edge):
             group_ids=group_ids,
             uuid=uuid_cursor,
             limit=limit,
-            database_=DEFAULT_DATABASE,
             routing_='r',
         )
 
@@ -226,21 +220,19 @@ class EntityEdge(Edge):
 
         return self.fact_embedding
 
-    async def load_fact_embedding(self, driver: AsyncDriver):
+    async def load_fact_embedding(self, driver: GraphDriver):
         query: LiteralString = """
             MATCH (n:Entity)-[e:RELATES_TO {uuid: $uuid}]->(m:Entity)
             RETURN e.fact_embedding AS fact_embedding
         """
-        records, _, _ = await driver.execute_query(
-            query, uuid=self.uuid, database_=DEFAULT_DATABASE, routing_='r'
-        )
+        records, _, _ = await driver.execute_query(query, uuid=self.uuid, routing_='r')
 
         if len(records) == 0:
             raise EdgeNotFoundError(self.uuid)
 
         self.fact_embedding = records[0]['fact_embedding']
 
-    async def save(self, driver: AsyncDriver):
+    async def save(self, driver: GraphDriver):
         edge_data: dict[str, Any] = {
             'source_uuid': self.source_node_uuid,
             'target_uuid': self.target_node_uuid,
@@ -261,22 +253,20 @@ class EntityEdge(Edge):
         result = await driver.execute_query(
             ENTITY_EDGE_SAVE,
             edge_data=edge_data,
-            database_=DEFAULT_DATABASE,
         )
 
-        logger.debug(f'Saved edge to neo4j: {self.uuid}')
+        logger.debug(f'Saved edge to Graph: {self.uuid}')
 
         return result
 
     @classmethod
-    async def get_by_uuid(cls, driver: AsyncDriver, uuid: str):
+    async def get_by_uuid(cls, driver: GraphDriver, uuid: str):
         records, _, _ = await driver.execute_query(
             """
         MATCH (n:Entity)-[e:RELATES_TO {uuid: $uuid}]->(m:Entity)
         """
             + ENTITY_EDGE_RETURN,
             uuid=uuid,
-            database_=DEFAULT_DATABASE,
             routing_='r',
         )
 
@@ -287,7 +277,7 @@ class EntityEdge(Edge):
         return edges[0]
 
     @classmethod
-    async def get_by_uuids(cls, driver: AsyncDriver, uuids: list[str]):
+    async def get_by_uuids(cls, driver: GraphDriver, uuids: list[str]):
         if len(uuids) == 0:
             return []
 
@@ -298,7 +288,6 @@ class EntityEdge(Edge):
         """
             + ENTITY_EDGE_RETURN,
             uuids=uuids,
-            database_=DEFAULT_DATABASE,
             routing_='r',
         )
 
@@ -309,29 +298,41 @@ class EntityEdge(Edge):
     @classmethod
     async def get_by_group_ids(
         cls,
-        driver: AsyncDriver,
+        driver: GraphDriver,
         group_ids: list[str],
         limit: int | None = None,
         uuid_cursor: str | None = None,
+        with_embeddings: bool = False,
     ):
         cursor_query: LiteralString = 'AND e.uuid < $uuid' if uuid_cursor else ''
         limit_query: LiteralString = 'LIMIT $limit' if limit is not None else ''
+        with_embeddings_query: LiteralString = (
+            """,
+                e.fact_embedding AS fact_embedding
+                """
+            if with_embeddings
+            else ''
+        )
 
-        records, _, _ = await driver.execute_query(
+        query: LiteralString = (
             """
-        MATCH (n:Entity)-[e:RELATES_TO]->(m:Entity)
-        WHERE e.group_id IN $group_ids
-        """
+            MATCH (n:Entity)-[e:RELATES_TO]->(m:Entity)
+            WHERE e.group_id IN $group_ids
+            """
             + cursor_query
             + ENTITY_EDGE_RETURN
+            + with_embeddings_query
             + """
         ORDER BY e.uuid DESC 
         """
-            + limit_query,
+            + limit_query
+        )
+
+        records, _, _ = await driver.execute_query(
+            query,
             group_ids=group_ids,
             uuid=uuid_cursor,
             limit=limit,
-            database_=DEFAULT_DATABASE,
             routing_='r',
         )
 
@@ -342,16 +343,14 @@ class EntityEdge(Edge):
         return edges
 
     @classmethod
-    async def get_by_node_uuid(cls, driver: AsyncDriver, node_uuid: str):
+    async def get_by_node_uuid(cls, driver: GraphDriver, node_uuid: str):
         query: LiteralString = (
             """
-                                            MATCH (n:Entity {uuid: $node_uuid})-[e:RELATES_TO]-(m:Entity)
-                                            """
+                                                                    MATCH (n:Entity {uuid: $node_uuid})-[e:RELATES_TO]-(m:Entity)
+                                                                    """
             + ENTITY_EDGE_RETURN
         )
-        records, _, _ = await driver.execute_query(
-            query, node_uuid=node_uuid, database_=DEFAULT_DATABASE, routing_='r'
-        )
+        records, _, _ = await driver.execute_query(query, node_uuid=node_uuid, routing_='r')
 
         edges = [get_entity_edge_from_record(record) for record in records]
 
@@ -359,7 +358,7 @@ class EntityEdge(Edge):
 
 
 class CommunityEdge(Edge):
-    async def save(self, driver: AsyncDriver):
+    async def save(self, driver: GraphDriver):
         result = await driver.execute_query(
             COMMUNITY_EDGE_SAVE,
             community_uuid=self.source_node_uuid,
@@ -367,15 +366,14 @@ class CommunityEdge(Edge):
             uuid=self.uuid,
             group_id=self.group_id,
             created_at=self.created_at,
-            database_=DEFAULT_DATABASE,
         )
 
-        logger.debug(f'Saved edge to neo4j: {self.uuid}')
+        logger.debug(f'Saved edge to Graph: {self.uuid}')
 
         return result
 
     @classmethod
-    async def get_by_uuid(cls, driver: AsyncDriver, uuid: str):
+    async def get_by_uuid(cls, driver: GraphDriver, uuid: str):
         records, _, _ = await driver.execute_query(
             """
         MATCH (n:Community)-[e:HAS_MEMBER {uuid: $uuid}]->(m:Entity | Community)
@@ -387,7 +385,6 @@ class CommunityEdge(Edge):
             e.created_at AS created_at
         """,
             uuid=uuid,
-            database_=DEFAULT_DATABASE,
             routing_='r',
         )
 
@@ -396,7 +393,7 @@ class CommunityEdge(Edge):
         return edges[0]
 
     @classmethod
-    async def get_by_uuids(cls, driver: AsyncDriver, uuids: list[str]):
+    async def get_by_uuids(cls, driver: GraphDriver, uuids: list[str]):
         records, _, _ = await driver.execute_query(
             """
         MATCH (n:Community)-[e:HAS_MEMBER]->(m:Entity | Community)
@@ -409,7 +406,6 @@ class CommunityEdge(Edge):
             e.created_at AS created_at
         """,
             uuids=uuids,
-            database_=DEFAULT_DATABASE,
             routing_='r',
         )
 
@@ -420,7 +416,7 @@ class CommunityEdge(Edge):
     @classmethod
     async def get_by_group_ids(
         cls,
-        driver: AsyncDriver,
+        driver: GraphDriver,
         group_ids: list[str],
         limit: int | None = None,
         uuid_cursor: str | None = None,
@@ -447,7 +443,6 @@ class CommunityEdge(Edge):
             group_ids=group_ids,
             uuid=uuid_cursor,
             limit=limit,
-            database_=DEFAULT_DATABASE,
             routing_='r',
         )
 
@@ -463,7 +458,7 @@ def get_episodic_edge_from_record(record: Any) -> EpisodicEdge:
         group_id=record['group_id'],
         source_node_uuid=record['source_node_uuid'],
         target_node_uuid=record['target_node_uuid'],
-        created_at=record['created_at'].to_native(),
+        created_at=parse_db_date(record['created_at']),  # type: ignore
     )
 
 
@@ -473,10 +468,11 @@ def get_entity_edge_from_record(record: Any) -> EntityEdge:
         source_node_uuid=record['source_node_uuid'],
         target_node_uuid=record['target_node_uuid'],
         fact=record['fact'],
+        fact_embedding=record.get('fact_embedding'),
         name=record['name'],
         group_id=record['group_id'],
         episodes=record['episodes'],
-        created_at=record['created_at'].to_native(),
+        created_at=parse_db_date(record['created_at']),  # type: ignore
         expired_at=parse_db_date(record['expired_at']),
         valid_at=parse_db_date(record['valid_at']),
         invalid_at=parse_db_date(record['invalid_at']),
@@ -504,7 +500,7 @@ def get_community_edge_from_record(record: Any):
         group_id=record['group_id'],
         source_node_uuid=record['source_node_uuid'],
         target_node_uuid=record['target_node_uuid'],
-        created_at=record['created_at'].to_native(),
+        created_at=parse_db_date(record['created_at']),  # type: ignore
     )
 
 

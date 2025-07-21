@@ -65,7 +65,7 @@ services:
   graph:
     build:
       context: .
-      dockerfile: ${GRAPHITI_DOCKERFILE:-Dockerfile}
+      dockerfile: ${GRAPHITI_DOCKERFILE:-Dockerfile-mine}
     restart: ${RESTART_POLICY:-always}
     healthcheck:
       test:

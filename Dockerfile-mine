@@ -57,30 +57,21 @@ ENV UV_COMPILE_BYTECODE=0 \
     UV_LINK_MODE=copy \
     UV_PYTHON_DOWNLOADS=never
 
-# Create non-root user early
-RUN groupadd -r app && useradd -r -d /app -g app app
-
-# Copy graphiti-core wheel from builder and set ownership
-COPY --from=builder --chown=app:app /app/dist/*.whl /tmp/
+# Copy graphiti-core wheel from builder
+COPY --from=builder /app/dist/*.whl /tmp/
 
 # Install graphiti-core wheel first - disable bytecode compilation to avoid timeout
 RUN --mount=type=cache,target=/root/.cache/uv \
     UV_COMPILE_BYTECODE=0 uv pip install --system /tmp/*.whl
 
-# Set up the server application with proper ownership from the start
+# Set up the server application
 WORKDIR /app
-COPY --chown=app:app ./server/pyproject.toml ./server/README.md ./server/uv.lock ./
-COPY --chown=app:app ./server/graph_service ./graph_service
+COPY ./server/pyproject.toml ./server/README.md ./server/uv.lock ./
+COPY ./server/graph_service ./graph_service
 
-# Install server dependencies and application as root first, then change ownership
+# Install server dependencies and application as root (simpler for containers)
 RUN --mount=type=cache,target=/root/.cache/uv \
     UV_COMPILE_BYTECODE=0 uv sync --frozen --no-dev
-
-# Change ownership of the virtual environment to app user
-RUN chown -R app:app /app/.venv
-
-# Switch to app user for runtime
-USER app
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1 \

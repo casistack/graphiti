@@ -34,7 +34,7 @@ services:
   graphiti_mcp:
     build:
       context: ./mcp_server
-      dockerfile: Dockerfile
+      dockerfile: ${MCP_DOCKERFILE:-Dockerfile-mine}
     restart: ${RESTART_POLICY:-always}
     entrypoint: >
       /bin/sh -c "

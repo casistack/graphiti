@@ -44,10 +44,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     netcat-traditional \
     && rm -rf /var/lib/apt/lists/*
 
-# Install uv using the installer script
+# Install uv using the installer script and make it globally available
 ADD https://astral.sh/uv/install.sh /uv-installer.sh
 RUN sh /uv-installer.sh && rm /uv-installer.sh
 ENV PATH="/root/.local/bin:$PATH"
+
+# Make uv available system-wide for all users
+RUN cp /root/.local/bin/uv /usr/local/bin/uv
 
 # Configure uv for runtime - disable bytecode compilation
 ENV UV_COMPILE_BYTECODE=0 \
@@ -69,16 +72,19 @@ WORKDIR /app
 COPY --chown=app:app ./server/pyproject.toml ./server/README.md ./server/uv.lock ./
 COPY --chown=app:app ./server/graph_service ./graph_service
 
-# Switch to app user before installing dependencies to avoid ownership issues
-USER app
-
-# Install server dependencies and application - disable bytecode compilation and use user cache
-RUN --mount=type=cache,target=/home/app/.cache/uv,uid=1000,gid=1000 \
+# Install server dependencies and application as root first, then change ownership
+RUN --mount=type=cache,target=/root/.cache/uv \
     UV_COMPILE_BYTECODE=0 uv sync --frozen --no-dev
+
+# Change ownership of the virtual environment to app user
+RUN chown -R app:app /app/.venv
+
+# Switch to app user for runtime
+USER app
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1 \
-    PATH="/app/.venv/bin:$PATH"
+    PATH="/app/.venv/bin:/usr/local/bin:$PATH"
 
 # Set port
 ENV PORT=8000

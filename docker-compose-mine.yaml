@@ -36,19 +36,19 @@ services:
       context: ./mcp_server
       dockerfile: ${MCP_DOCKERFILE:-Dockerfile-mine}
     restart: ${RESTART_POLICY:-always}
-    entrypoint: >
-      /bin/sh -c "
-      echo 'Waiting for Neo4j to become available...' &&
-      for i in {1..60}; do
-        sleep 5
-        if nc -z neo4j 7687 2>/dev/null; then
-          echo 'Neo4j is available, starting Graphiti MCP...'
-          break
-        fi
-        echo 'Neo4j not available yet, waiting... (attempt $$i/60)'
-      done &&
-      uv run main.py
-      "
+    depends_on:
+      neo4j:
+        condition: service_healthy
+    command:
+      [
+        "uv",
+        "run",
+        "main.py",
+        "--database-provider",
+        "neo4j",
+        "--config",
+        "config/config-docker-neo4j.yaml",
+      ]
     environment:
       OPENAI_API_KEY: ${OPENAI_API_KEY}
       OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}

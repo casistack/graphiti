@@ -25,6 +25,9 @@ ENV UV_COMPILE_BYTECODE=0 \
     MCP_SERVER_HOST="0.0.0.0" \
     PYTHONUNBUFFERED=1
 
+# Accept graphiti-core version as build argument
+ARG GRAPHITI_CORE_VERSION=0.22.0
+
 # Copy project files for dependency installation (better caching)
 COPY pyproject.toml uv.lock ./
 
@@ -32,11 +35,13 @@ COPY pyproject.toml uv.lock ./
 RUN --mount=type=cache,target=/root/.cache/uv \
     UV_COMPILE_BYTECODE=0 uv sync --frozen --no-dev
 
-# Copy application code
-COPY graphiti_mcp_server.py ./
+# Copy new modular application structure
+COPY main.py ./
+COPY src/ ./src/
+COPY config/ ./config/
 
 # Expose port
 EXPOSE 8000
 
-# Command to run the application (as root to avoid permission issues)
-CMD ["uv", "run", "graphiti_mcp_server.py"]
+# Command to run the new entry point (as root to avoid permission issues)
+CMD ["uv", "run", "main.py"]

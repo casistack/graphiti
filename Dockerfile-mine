@@ -1,12 +1,10 @@
 # syntax=docker/dockerfile:1.9
 # Custom Dockerfile optimized for Coolify deployment
-FROM python:3.12-slim as builder
+# Simplified single-stage build for faster deploys
+FROM python:3.12-slim
 
-WORKDIR /app
-
-# Install system dependencies for building (including netcat for health checks)
+# Install system dependencies including netcat for health checks
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    gcc \
     curl \
     ca-certificates \
     netcat-traditional \
@@ -17,61 +15,26 @@ ADD https://astral.sh/uv/install.sh /uv-installer.sh
 RUN sh /uv-installer.sh && rm /uv-installer.sh
 ENV PATH="/root/.local/bin:$PATH"
 
-# Configure uv for optimal Docker usage - disable bytecode compilation for faster builds
+# Configure uv - disable bytecode compilation for faster builds
 ENV UV_COMPILE_BYTECODE=0 \
     UV_LINK_MODE=copy \
     UV_PYTHON_DOWNLOADS=never
-
-# Copy and build main graphiti-core project
-COPY ./pyproject.toml ./README.md ./
-COPY ./graphiti_core ./graphiti_core
-
-# Build graphiti-core wheel
-RUN --mount=type=cache,target=/root/.cache/uv \
-    uv build
-
-# Install the built wheel to make it available for server - disable bytecode compilation
-RUN --mount=type=cache,target=/root/.cache/uv \
-    UV_COMPILE_BYTECODE=0 pip install dist/*.whl
-
-# Runtime stage - build the server here
-FROM python:3.12-slim
-
-# Install system dependencies including netcat for health checks
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl \
-    ca-certificates \
-    netcat-traditional \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install uv using the installer script and make it globally available
-ADD https://astral.sh/uv/install.sh /uv-installer.sh
-RUN sh /uv-installer.sh && rm /uv-installer.sh
-ENV PATH="/root/.local/bin:$PATH"
-
-# Make uv available system-wide for all users
-RUN cp /root/.local/bin/uv /usr/local/bin/uv
-
-# Configure uv for runtime - disable bytecode compilation
-ENV UV_COMPILE_BYTECODE=0 \
-    UV_LINK_MODE=copy \
-    UV_PYTHON_DOWNLOADS=never
-
-# Copy graphiti-core wheel from builder
-COPY --from=builder /app/dist/*.whl /tmp/
-
-# Install graphiti-core wheel first - disable bytecode compilation to avoid timeout
-RUN --mount=type=cache,target=/root/.cache/uv \
-    UV_COMPILE_BYTECODE=0 uv pip install --system /tmp/*.whl
 
 # Set up the server application
 WORKDIR /app
 COPY ./server/pyproject.toml ./server/README.md ./server/uv.lock ./
 COPY ./server/graph_service ./graph_service
 
-# Install server dependencies and application as root (simpler for containers)
+# Install server dependencies then upgrade to latest graphiti-core from PyPI
+# This prevents lockfile from pinning old versions
+ARG GRAPHITI_VERSION
 RUN --mount=type=cache,target=/root/.cache/uv \
-    UV_COMPILE_BYTECODE=0 uv sync --frozen --no-dev
+    UV_COMPILE_BYTECODE=0 uv sync --frozen --no-dev && \
+    if [ -n "$GRAPHITI_VERSION" ]; then \
+        uv pip install --system --upgrade "graphiti-core==$GRAPHITI_VERSION"; \
+    else \
+        uv pip install --system --upgrade graphiti-core; \
+    fi
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1 \

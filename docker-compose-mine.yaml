@@ -60,7 +60,7 @@ services:
       EMBEDDER_MODEL_NAME: "${EMBEDDING_MODEL_NAME:-text-embedding-3-small}"
       GRAPHITI_GROUP_ID: "${MCP_GROUP_ID:-default_group}"
       SEMAPHORE_LIMIT: "${SEMAPHORE_LIMIT:-10}"
-      CONFIG_PATH: "/app/config/config-docker-neo4j.yaml"
+      CONFIG_PATH: "config/config-docker-neo4j.yaml"
     ports:
       - "8282:8000" # Exposing on a different port to avoid conflicts with your graph API
 

@@ -31,6 +31,13 @@ ARG GRAPHITI_CORE_VERSION=0.22.0
 # Copy project files for dependency installation (better caching)
 COPY pyproject.toml uv.lock ./
 
+# Remove the local path override for graphiti-core in Docker builds
+# Then install dependencies
+RUN sed -i '/\[tool\.uv\.sources\]/,/graphiti-core/d' pyproject.toml && \
+    if [ -n "${GRAPHITI_CORE_VERSION}" ]; then \
+      sed -i "s/graphiti-core\[neo4j\]>=0\.16\.0/graphiti-core[neo4j]==${GRAPHITI_CORE_VERSION}/" pyproject.toml; \
+    fi
+
 # Install dependencies as root (simpler for containers)
 RUN --mount=type=cache,target=/root/.cache/uv \
     UV_COMPILE_BYTECODE=0 uv sync --frozen --no-dev

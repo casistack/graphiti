@@ -33,20 +33,24 @@ ENV UV_COMPILE_BYTECODE=1 \
 WORKDIR /app/mcp
 
 # Accept graphiti-core version as build argument
-ARG GRAPHITI_CORE_VERSION=0.22.0
+ARG GRAPHITI_CORE_VERSION=0.23.1
 
 # Copy project files for dependency installation
 COPY pyproject.toml uv.lock ./
 
 # Remove the local path override for graphiti-core in Docker builds
+# and regenerate lock file to match the PyPI version
 RUN sed -i '/\[tool\.uv\.sources\]/,/graphiti-core/d' pyproject.toml && \
     if [ -n "${GRAPHITI_CORE_VERSION}" ]; then \
-      sed -i "s/graphiti-core\[falkordb\]>=0\.16\.0/graphiti-core[falkordb]==${GRAPHITI_CORE_VERSION}/" pyproject.toml; \
-    fi
+      sed -i "s/graphiti-core\[falkordb\]>=[0-9]\+\.[0-9]\+\.[0-9]\+$/graphiti-core[falkordb]==${GRAPHITI_CORE_VERSION}/" pyproject.toml; \
+    fi && \
+    echo "Regenerating lock file for PyPI graphiti-core..." && \
+    rm -f uv.lock && \
+    uv lock
 
-# Install Python dependencies
+# Install Python dependencies (exclude dev dependency group)
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --no-dev
+    uv sync --no-group dev
 
 # Store graphiti-core version
 RUN echo "${GRAPHITI_CORE_VERSION}" > /app/mcp/.graphiti-core-version
@@ -85,16 +89,30 @@ until redis-cli -h localhost -p 6379 ping > /dev/null 2>&1; do
 done
 echo "FalkorDB is ready!"
 
+# Start FalkorDB Browser if enabled (default: enabled)
+if [ "${BROWSER:-1}" = "1" ]; then
+  if [ -d "/var/lib/falkordb/browser" ] && [ -f "/var/lib/falkordb/browser/server.js" ]; then
+    echo "Starting FalkorDB Browser on port 3000..."
+    cd /var/lib/falkordb/browser
+    HOSTNAME="0.0.0.0" node server.js > /var/log/graphiti/browser.log 2>&1 &
+    echo "FalkorDB Browser started in background"
+  else
+    echo "Warning: FalkorDB Browser files not found, skipping browser startup"
+  fi
+else
+  echo "FalkorDB Browser disabled (BROWSER=${BROWSER})"
+fi
+
 # Start MCP server in foreground
 echo "Starting MCP server..."
 cd /app/mcp
-exec /root/.local/bin/uv run main.py
+exec /root/.local/bin/uv run --no-sync main.py
 EOF
 
 RUN chmod +x /start-services.sh
 
 # Add Docker labels with version information
-ARG MCP_SERVER_VERSION=1.0.0rc0
+ARG MCP_SERVER_VERSION=1.0.1
 ARG BUILD_DATE
 ARG VCS_REF
 LABEL org.opencontainers.image.title="FalkorDB + Graphiti MCP Server" \

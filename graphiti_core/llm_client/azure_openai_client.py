@@ -17,7 +17,7 @@ limitations under the License.
 import logging
 from typing import ClassVar
 
-from openai import AsyncAzureOpenAI
+from openai import AsyncAzureOpenAI, AsyncOpenAI
 from openai.types.chat import ChatCompletionMessageParam
 from pydantic import BaseModel
 
@@ -28,14 +28,17 @@ logger = logging.getLogger(__name__)
 
 
 class AzureOpenAILLMClient(BaseOpenAIClient):
-    """Wrapper class for AsyncAzureOpenAI that implements the LLMClient interface."""
+    """Wrapper class for Azure OpenAI that implements the LLMClient interface.
+
+    Supports both AsyncAzureOpenAI and AsyncOpenAI (with Azure v1 API endpoint).
+    """
 
     # Class-level constants
     MAX_RETRIES: ClassVar[int] = 2
 
     def __init__(
         self,
-        azure_client: AsyncAzureOpenAI,
+        azure_client: AsyncAzureOpenAI | AsyncOpenAI,
         config: LLMConfig | None = None,
         max_tokens: int = DEFAULT_MAX_TOKENS,
         reasoning: str | None = None,

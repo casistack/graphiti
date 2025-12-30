@@ -19,9 +19,11 @@ RUN sh /uv-installer.sh && rm /uv-installer.sh
 ENV PATH="/root/.local/bin:${PATH}"
 
 # Configure uv for optimal Docker usage - disable bytecode compilation
+# UV_PYTHON forces uv to use the container's Python, ignoring .python-version
 ENV UV_COMPILE_BYTECODE=0 \
     UV_LINK_MODE=copy \
     UV_PYTHON_DOWNLOADS=never \
+    UV_PYTHON=/usr/local/bin/python3 \
     MCP_SERVER_HOST="0.0.0.0" \
     PYTHONUNBUFFERED=1
 

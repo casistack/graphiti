@@ -25,31 +25,25 @@ ENV UV_COMPILE_BYTECODE=0 \
     MCP_SERVER_HOST="0.0.0.0" \
     PYTHONUNBUFFERED=1
 
-# Accept graphiti-core version as build argument
-ARG GRAPHITI_CORE_VERSION=0.22.0
+# Copy the graphiti-core source (root project)
+# We place it in /app so that it matches the "../" path expected by mcp_server's pyproject.toml (which will be in /app/mcp_server)
+COPY pyproject.toml /app/
+COPY graphiti_core /app/graphiti_core
 
-# Copy project files for dependency installation (better caching)
-COPY pyproject.toml uv.lock ./
+# Copy mcp_server files to a subdirectory
+COPY mcp_server /app/mcp_server
 
-# Remove the local path override for graphiti-core in Docker builds
-# This allows uv to fetch graphiti-core from PyPI instead of looking for local files
-RUN sed -i '/\[tool\.uv\.sources\]/,/^$/d' pyproject.toml && \
-    if [ -n "${GRAPHITI_CORE_VERSION}" ]; then \
-      sed -i "s/graphiti-core\[neo4j\]>=0\.16\.0/graphiti-core[neo4j]==${GRAPHITI_CORE_VERSION}/" pyproject.toml; \
-    fi
+# Set working directory to the server
+WORKDIR /app/mcp_server
 
-# Install dependencies - don't use --frozen since we modified pyproject.toml
-# This will resolve graphiti-core from PyPI
+# Install dependencies
+# Because we set up the directory structure correctly, uv sync will find graphiti-core at "../" (which is /app)
 RUN --mount=type=cache,target=/root/.cache/uv \
     UV_COMPILE_BYTECODE=0 uv sync --no-dev
-
-# Copy new modular application structure
-COPY main.py ./
-COPY src/ ./src/
-COPY config/ ./config/
 
 # Expose port
 EXPOSE 8000
 
-# Command to run the new entry point (as root to avoid permission issues)
+# Command to run the new entry point
+# Note: entrypoint is overridden by docker-compose, but this is the default
 CMD ["uv", "run", "main.py"]

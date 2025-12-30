@@ -32,22 +32,25 @@ services:
 
   graphiti_mcp:
     build:
-      context: ./mcp_server
-      dockerfile: ${MCP_DOCKERFILE:-Dockerfile-mine}
+      context: .
+      dockerfile: mcp_server/Dockerfile-mine
     restart: ${RESTART_POLICY:-always}
     depends_on:
       neo4j:
         condition: service_healthy
-    command:
-      [
-        "uv",
-        "run",
-        "main.py",
-        "--database-provider",
-        "neo4j",
-        "--config",
-        "config/config-docker-neo4j.yaml",
-      ]
+    entrypoint: >
+      /bin/sh -c "
+      echo 'Waiting for Neo4j to become available...' &&
+      for i in {1..120}; do
+        sleep 5
+        if nc -z neo4j 7687 2>/dev/null; then
+          echo 'Neo4j is available, starting MCP...'
+          break
+        fi
+        echo 'Neo4j not available yet, waiting... (attempt $$i/120)'
+      done &&
+      uv run main.py --database-provider neo4j --config config/config-docker-neo4j.yaml
+      "
     environment:
       OPENAI_API_KEY: ${OPENAI_API_KEY}
       OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}
@@ -102,6 +105,7 @@ services:
       PORT: 8000
       MODEL_NAME: ${MODEL_NAME:-gpt-4o-mini}
       EMBEDDING_MODEL_NAME: ${EMBEDDING_MODEL_NAME:-text-embedding-3-small}
+      db_backend: neo4j
     ports:
       - ":8000"
 

@@ -22,19 +22,22 @@ ENV UV_COMPILE_BYTECODE=0 \
 
 # Set up the server application
 WORKDIR /app
+
+# Copy local graphiti-core source first
+COPY pyproject.toml /app/core_source/
+COPY graphiti_core /app/core_source/graphiti_core
+
+# Copy server files
 COPY ./server/pyproject.toml ./server/README.md ./server/uv.lock ./
 COPY ./server/graph_service ./graph_service
 
-# Install server dependencies then upgrade to latest graphiti-core from PyPI
-# This prevents lockfile from pinning old versions
-ARG GRAPHITI_VERSION
+# Install server dependencies
 RUN --mount=type=cache,target=/root/.cache/uv \
-    UV_COMPILE_BYTECODE=0 uv sync --frozen --no-dev && \
-    if [ -n "$GRAPHITI_VERSION" ]; then \
-        uv pip install --system --upgrade "graphiti-core==$GRAPHITI_VERSION"; \
-    else \
-        uv pip install --system --upgrade graphiti-core; \
-    fi
+    UV_COMPILE_BYTECODE=0 uv sync --frozen --no-dev
+
+# Install local graphiti-core override
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv pip install --system --upgrade /app/core_source
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1 \

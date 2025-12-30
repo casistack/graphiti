@@ -63,7 +63,7 @@ while handling changing relationships and maintaining historical context.
 
 ## Graphiti and Zep's Context Engineering Platform.
 
-Graphiti powers the core of [Zep](https://www.getzep.com), a turn-key context engineering platform for AI Agents. Zep
+Graphiti powers the core of [Zep's context engineering platform](https://www.getzep.com) for AI Agents. Zep
 offers agent memory, Graph RAG for dynamic data, and context retrieval and assembly.
 
 Using Graphiti, we've demonstrated Zep is
@@ -479,7 +479,7 @@ graphiti = Graphiti(
     cross_encoder=GeminiRerankerClient(
         config=LLMConfig(
             api_key=api_key,
-            model="gemini-2.5-flash-lite-preview-06-17"
+            model="gemini-2.5-flash-lite"
         )
     )
 )
@@ -487,7 +487,7 @@ graphiti = Graphiti(
 # Now you can use Graphiti with Google Gemini for all components
 ```
 
-The Gemini reranker uses the `gemini-2.5-flash-lite-preview-06-17` model by default, which is optimized for
+The Gemini reranker uses the `gemini-2.5-flash-lite` model by default, which is optimized for
 cost-effective and low-latency classification tasks. It uses the same boolean classification approach as the OpenAI
 reranker, leveraging Gemini's log probabilities feature to rank passage relevance.
 

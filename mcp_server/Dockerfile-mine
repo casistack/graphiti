@@ -29,7 +29,8 @@ ENV UV_COMPILE_BYTECODE=0 \
 
 # Copy the graphiti-core source (root project)
 # We place it in /app so that it matches the "../" path expected by mcp_server's pyproject.toml (which will be in /app/mcp_server)
-COPY pyproject.toml /app/
+# Must include README.md as pyproject.toml references it
+COPY pyproject.toml README.md /app/
 COPY graphiti_core /app/graphiti_core
 
 # Copy mcp_server files to a subdirectory

@@ -23,8 +23,9 @@ ENV UV_COMPILE_BYTECODE=0 \
 # Set up the server application
 WORKDIR /app
 
-# Copy local graphiti-core source first
-COPY pyproject.toml /app/core_source/
+# Copy local graphiti-core source with all files needed for build
+# (pyproject.toml references readme = "README.md")
+COPY pyproject.toml README.md /app/core_source/
 COPY graphiti_core /app/core_source/graphiti_core
 
 # Copy server files

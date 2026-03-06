@@ -18,6 +18,7 @@ from graphiti_core.nodes import EpisodeType, EpisodicNode
 from graphiti_core.search.search_filters import SearchFilters
 from graphiti_core.utils.maintenance.graph_data_operations import clear_data
 from mcp.server.fastmcp import FastMCP
+from mcp.server.transport_security import TransportSecuritySettings
 from pydantic import BaseModel
 from starlette.responses import JSONResponse
 
@@ -143,10 +144,20 @@ For optimal performance, ensure the database is properly configured and accessib
 API keys are provided for any language model operations.
 """
 
+# Build transport security settings from environment
+_default_allowed_hosts = ['127.0.0.1:*', 'localhost:*', '[::1]:*']
+_extra_hosts_raw = os.environ.get('MCP_ALLOWED_HOSTS', '')
+_extra_hosts = [h.strip() for h in _extra_hosts_raw.split(',') if h.strip()] if _extra_hosts_raw else []
+_transport_security = TransportSecuritySettings(
+    enable_dns_rebinding_protection=True,
+    allowed_hosts=_default_allowed_hosts + _extra_hosts,
+)
+
 # MCP server instance
 mcp = FastMCP(
     'Graphiti Agent Memory',
     instructions=GRAPHITI_MCP_INSTRUCTIONS,
+    transport_security=_transport_security,
 )
 
 # Global services

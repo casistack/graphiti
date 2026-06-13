@@ -68,7 +68,20 @@ COPY ./server/graph_service ./graph_service
 
 # Install server dependencies and application
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen --no-dev
+    uv sync --frozen --no-dev && \
+    if [ -n "$GRAPHITI_VERSION" ]; then \
+        if [ "$INSTALL_FALKORDB" = "true" ]; then \
+            uv pip install --upgrade "graphiti-core[falkordb]==$GRAPHITI_VERSION"; \
+        else \
+            uv pip install --upgrade "graphiti-core==$GRAPHITI_VERSION"; \
+        fi; \
+    else \
+        if [ "$INSTALL_FALKORDB" = "true" ]; then \
+            uv pip install --upgrade "graphiti-core[falkordb]"; \
+        else \
+            uv pip install --upgrade graphiti-core; \
+        fi; \
+    fi
 
 # Change ownership to app user
 RUN chown -R app:app /app
@@ -84,5 +97,5 @@ USER app
 ENV PORT=8000
 EXPOSE $PORT
 
-# Use uv run for execution
-CMD ["uv", "run", "uvicorn", "graph_service.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Use uv run with --no-sync to avoid re-syncing on startup
+CMD ["uv", "run", "--no-sync", "uvicorn", "graph_service.main:app", "--host", "0.0.0.0", "--port", "8000"]

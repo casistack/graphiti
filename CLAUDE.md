@@ -18,6 +18,11 @@ Key features:
 
 ### Main Development Commands (run from project root)
 
+Important: Always use `uv` from the current repo/package working directory. Do not use system
+Python, global `pip`, or globally installed pytest/ruff/pyright in this repository. If the local
+environment is missing or stale, run `uv venv` if needed, then `uv sync --extra dev` from the repo
+root before running tests or tooling.
+
 ```bash
 # Install dependencies
 uv sync --extra dev
